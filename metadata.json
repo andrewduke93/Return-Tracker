@@ -1,0 +1,5 @@
+{
+  "name": "Return Tracker AI",
+  "description": "Track your returns with AI-powered receipt and QR code scanning. Never miss a return deadline again.",
+  "requestFramePermissions": ["camera", "geolocation"]
+}

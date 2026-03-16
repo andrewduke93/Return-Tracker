@@ -1,0 +1,94 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: returns
+// Document ID: auto-generated
+// Fields:
+//   - itemName: string (required) - Name of the item
+//   - deadline: string (required, YYYY-MM-DD) - Return deadline
+//   - packagingRules: string (optional) - Rules for packaging
+//   - imageUrl: string (optional) - URL to the receipt/QR image
+//   - status: string (required, enum: ['pending', 'completed']) - Status
+//   - userId: string (required) - Owner's UID
+//   - createdAt: string (required, ISO date-time) - Creation timestamp
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "andrewduke93@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidReturn(data) {
+      let allowedFields = ['itemName', 'deadline', 'packagingRules', 'imageUrl', 'status', 'userId', 'createdAt', 'mimeType', 'storeName', 'storeHours', 'storeAddress'];
+      return data.keys().hasOnly(allowedFields) &&
+             data.itemName is string && data.itemName.size() > 0 && data.itemName.size() < 200 &&
+             data.deadline is string && data.deadline.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+             data.status in ['pending', 'completed'] &&
+             data.userId is string &&
+             (!('packagingRules' in data) || (data.packagingRules is string && data.packagingRules.size() < 2000)) &&
+             (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() < 1000)) &&
+             (!('mimeType' in data) || (data.mimeType is string && data.mimeType.size() < 100)) &&
+             (!('storeName' in data) || (data.storeName is string && data.storeName.size() < 200)) &&
+             (!('storeHours' in data) || (data.storeHours is string && data.storeHours.size() < 500)) &&
+             (!('storeAddress' in data) || (data.storeAddress is string && data.storeAddress.size() < 1000));
+    }
+
+    function isValidUser(data) {
+      let allowedFields = ['name', 'email', 'photoUrl', 'role', 'createdAt'];
+      return data.keys().hasOnly(allowedFields) &&
+             data.name is string && data.name.size() < 100 &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
+             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() < 1000)) &&
+             data.role in ['user', 'admin'];
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /returns/{returnId} {
+      allow read: if isDocOwner() || isAdmin();
+      
+      allow create: if isAuthenticated() && 
+                      isValidReturn(request.resource.data) && 
+                      request.resource.data.userId == request.auth.uid;
+                      
+      allow update: if isDocOwner() && 
+                      isValidReturn(request.resource.data) && 
+                      request.resource.data.userId == resource.data.userId &&
+                      request.resource.data.userId == request.auth.uid;
+                      
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role;
+      allow delete: if isAdmin();
+    }
+  }
+}

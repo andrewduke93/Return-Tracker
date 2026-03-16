@@ -1,0 +1,29 @@
+{
+  "entities": {
+    "Return": {
+      "title": "Return",
+      "description": "A return item to be tracked.",
+      "type": "object",
+      "properties": {
+        "itemName": { "type": "string", "description": "Name of the item being returned." },
+        "deadline": { "type": "string", "format": "date", "description": "The deadline date for the return." },
+        "packagingRules": { "type": "string", "description": "Rules for packaging the return (e.g., original box required)." },
+        "imageUrl": { "type": "string", "description": "URL to the saved image or QR code." },
+        "mimeType": { "type": "string", "description": "The mime type of the saved image or PDF." },
+        "status": { "type": "string", "enum": ["pending", "completed"], "description": "Current status of the return." },
+        "userId": { "type": "string", "description": "The ID of the user who owns this return." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the return was created." },
+        "storeName": { "type": "string", "description": "Name of the store." },
+        "storeHours": { "type": "string", "description": "Hours of the store." },
+        "storeAddress": { "type": "string", "description": "Address of the store." }
+      },
+      "required": ["itemName", "deadline", "userId", "status"]
+    }
+  },
+  "firestore": {
+    "/returns/{returnId}": {
+      "schema": "Return",
+      "description": "Collection of return items."
+    }
+  }
+}
